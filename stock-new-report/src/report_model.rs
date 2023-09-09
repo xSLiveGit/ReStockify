@@ -1,12 +1,14 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StockReport {
     ticker: String,
     version: i32, // Add the numeric version field
-    data: HashMap<i32, Report>,
+    data: HashMap<String, Report>,
 }
+
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Report {
@@ -38,6 +40,7 @@ pub struct IncomeStatement {
     shares_outstanding_basic: f64,
 }
 
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BalanceSheet {
     #[serde(rename = "cash-and-equivalents")]
@@ -51,6 +54,7 @@ pub struct BalanceSheet {
     #[serde(rename = "total-liabilities")]
     total_liabilities: f64,
 }
+
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CashFlowStatement {
@@ -67,6 +71,7 @@ pub struct CashFlowStatement {
     #[serde(rename = "dividends-per-share")]
     dividends_per_share: f64,
 }
+
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FinancialRatios {
