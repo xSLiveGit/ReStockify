@@ -1,17 +1,18 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StockReport {
-    ticker: String,
-    version: i32, // Add the numeric version field
-    data: HashMap<String, Report>,
+    #[serde(rename = "latest-update")]
+    pub latest_update: Option<i64>,
+    pub ticker: String,
+    pub version: i32, // Add the numeric version field
+    pub data: Vec<Report>,
 }
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Report {
+    #[serde(rename = "year")]
+    year: i32,
     #[serde(rename = "income-statement")]
     income_statement: IncomeStatement,
     #[serde(rename = "balance-sheet")]

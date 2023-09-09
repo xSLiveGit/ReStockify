@@ -1,8 +1,8 @@
 {
     "ticker": "PEP",
     "version": 1,
-    "data": {
-        "2010": {
+    "data": [
+        {
             "income-statement": {
                 "revenue": 57838.0,
                 "total-cogs": 26575.0,
@@ -29,9 +29,10 @@
             },
             "financial-ratios": {
                 "avg-share-price": 64.41
-            }
+            },
+            "year": 2010
         },
-        "2011": {
+        {
             "income-statement": {
                 "revenue": 66504.0,
                 "total-cogs": 31593.0,
@@ -58,8 +59,8 @@
             },
             "financial-ratios": {
                 "avg-share-price": 65.21
-            }
+            },
+            "year": 2011
         }
-    }
+    ]
 }
-

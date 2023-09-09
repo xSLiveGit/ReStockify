@@ -4,6 +4,9 @@ use mongodb::{Client, options::ClientOptions};
 use std::sync::Arc;
 use serde::{Serialize};
 use serde_json;
+use chrono;
+use chrono::Utc;
+
 
 mod report_model;
 use report_model::StockReport;
@@ -20,9 +23,11 @@ async fn create_item(item: web::Json<StockReport>, db: web::Data<Arc<Database>>)
     println!("{:?}", item);
 
     let collection = db.client.database(db.db_name.as_str()).collection::<StockReport>("stock_reports");
-
+    
     // Insert the received JSON data into the MongoDB collection
-    let stock_report = item.into_inner();
+    let mut stock_report = item.into_inner();
+    let _ = stock_report.latest_update.get_or_insert(Utc::now().timestamp());
+
     let result = collection.insert_one(stock_report, None).await;
 
     match result {
