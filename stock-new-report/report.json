@@ -1,0 +1,65 @@
+{
+    "ticker": "PEP",
+    "version": 1,
+    "data": {
+        "2010": {
+            "income-statement": {
+                "revenue": 57838.0,
+                "total-cogs": 26575.0,
+                "operating-expense": 22931.0,
+                "interest-expense": -835.0,
+                "net-income": 6320.0,
+                "eps-basic": 3.97,
+                "shares-outstanding-basic": 1590.0
+            },
+            "balance-sheet": {
+                "cash-and-equivalents": 6369.0,
+                "total-assets": 68153.0,
+                "short-term-debt": 4898.0,
+                "long-term-debt": 19999.0,
+                "total-liabilities": 46677.0
+            },
+            "cash-flow-statement": {
+                "operating-cash-flow": 8448.0,
+                "investing-cash-flow": -7668.0,
+                "capital-expenditure": 3253.0,
+                "financing-cash-flow": 1386.0,
+                "dividends-paid": 2978.0,
+                "dividends-per-share": 1.89
+            },
+            "financial-ratios": {
+                "avg-share-price": 64.41
+            }
+        },
+        "2011": {
+            "income-statement": {
+                "revenue": 66504.0,
+                "total-cogs": 31593.0,
+                "operating-expense": 25278.0,
+                "interest-expense": -799.0,
+                "net-income": 6443.0,
+                "eps-basic": 4.08,
+                "shares-outstanding-basic": 1576.0
+            },
+            "balance-sheet": {
+                "cash-and-equivalents": 4425.0,
+                "total-assets": 72882.0,
+                "short-term-debt": 6205.0,
+                "long-term-debt": 20568.0,
+                "total-liabilities": 51983.0
+            },
+            "cash-flow-statement": {
+                "operating-cash-flow": 8944.0,
+                "investing-cash-flow": -5618.0,
+                "capital-expenditure": 3339.0,
+                "financing-cash-flow": -5135.0,
+                "dividends-paid": 3157.0,
+                "dividends-per-share": 2.03
+            },
+            "financial-ratios": {
+                "avg-share-price": 65.21
+            }
+        }
+    }
+}
+

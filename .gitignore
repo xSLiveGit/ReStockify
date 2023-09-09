@@ -1,0 +1,7 @@
+.DS_Store
+
+stock-new-report/target/
+stock-new-report/debug/
+stock-new-report/Cargo.lock
+
+
