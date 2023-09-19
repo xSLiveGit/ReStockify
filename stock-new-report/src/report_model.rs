@@ -9,75 +9,144 @@ pub struct StockReport {
     pub data: Vec<Report>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct Report {
     #[serde(rename = "year")]
-    year: i32,
+    pub year: i32,
     #[serde(rename = "income-statement")]
-    income_statement: IncomeStatement,
+    pub income_statement: IncomeStatement,
+
+    #[serde(rename = "income-statement-yoy")]
+    pub income_statement_yoy: Option<IncomeStatement>,
+
     #[serde(rename = "balance-sheet")]
-    balance_sheet: BalanceSheet,
+    pub balance_sheet: BalanceSheet,
+
+    #[serde(rename = "balance-sheet-yoy")]
+    pub balance_sheet_yoy: Option<BalanceSheet>,
+    
     #[serde(rename = "cash-flow-statement")]
-    cash_flow_statement: CashFlowStatement,
+    pub cash_flow_statement: CashFlowStatement,
+    
+    #[serde(rename = "cash-flow-statement-yoy")]
+    pub cash_flow_statement_yoy: Option<CashFlowStatement>,
+    
     #[serde(rename = "financial-ratios")]
-    financial_ratios: FinancialRatios,
+    pub financial_ratios: FinancialRatios,
 }
 
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct IncomeStatement {
-    revenue: f64,
+    #[serde(rename = "revenue")]
+    pub revenue: f64,
+
     #[serde(rename = "total-cogs")]
-    total_cogs: f64,
+    pub total_cogs: f64,
+
+    #[serde(rename = "gross-profit")]
+    pub gross_profit: Option<f64>, // revenue - total cogs
+
+    #[serde(rename = "gross-profit-margin")]
+    pub gross_profit_margin: Option<f64>, // gross_profit/revenue
+
     #[serde(rename = "operating-expense")]
-    operating_expense: f64,
+    pub operating_expense: f64,
+
+    #[serde(rename = "operating-income")]
+    pub operating_income: Option<f64>, // gross_profit - operating_expense
+
+    #[serde(rename = "operating-profit-margin")]
+    pub operating_profit_margin: Option<f64>, // operating_income/revenue
+
     #[serde(rename = "interest-expense")]
-    interest_expense: f64,
+    pub interest_expense: f64,
+
     #[serde(rename = "net-income")]
-    net_income: f64,
+    pub net_income: f64,
+
+    #[serde(rename = "net-profit-margin")]
+    pub net_profit_margin: Option<f64>, //net_income/revenue
+
     #[serde(rename = "eps-basic")]
-    eps_basic: f64,
+    pub eps_basic: f64,
+
     #[serde(rename = "shares-outstanding-basic")]
-    shares_outstanding_basic: f64,
+    pub shares_outstanding_basic: f64,
 }
 
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct BalanceSheet {
     #[serde(rename = "cash-and-equivalents")]
-    cash_and_equivalents: f64,
+    pub cash_and_equivalents: f64,
     #[serde(rename = "total-assets")]
-    total_assets: f64,
+    pub total_assets: f64,
     #[serde(rename = "short-term-debt")]
-    short_term_debt: f64,
+    pub short_term_debt: f64,
     #[serde(rename = "long-term-debt")]
-    long_term_debt: f64,
+    pub long_term_debt: f64,
     #[serde(rename = "total-liabilities")]
-    total_liabilities: f64,
+    pub total_liabilities: f64,
+
+    #[serde(rename = "total-debt")]
+    pub total_debt: Option<f64>,
+    #[serde(rename = "total-equity")]
+    pub total_equity: Option<f64>,
+    #[serde(rename = "debt-to-capital")]
+    pub debt_to_capital: Option<f64>,
 }
 
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct CashFlowStatement {
     #[serde(rename = "operating-cash-flow")]
-    operating_cash_flow: f64,
+    pub operating_cash_flow: f64,
     #[serde(rename = "investing-cash-flow")]
-    investing_cash_flow: f64,
+    pub investing_cash_flow: f64,
     #[serde(rename = "capital-expenditure")]
-    capital_expenditure: f64,
+    pub capital_expenditure: f64,
     #[serde(rename = "financing-cash-flow")]
-    financing_cash_flow: f64,
+    pub financing_cash_flow: f64,
     #[serde(rename = "dividends-paid")]
-    dividends_paid: f64,
+    pub dividends_paid: f64,
     #[serde(rename = "dividends-per-share")]
-    dividends_per_share: f64,
+    pub dividends_per_share: f64,
+
+    #[serde(rename = "free-cash-flow")]
+    pub free_cash_flow: Option<f64>,
+    #[serde(rename = "fcf-per-share")]
+    pub fcf_per_share: Option<f64>,
+
 }
 
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct FinancialRatios {
     #[serde(rename = "avg-share-price")]
-    avg_share_price: f64,
-    #[serde(rename = "PE-ratio")]
-    pe_ratio: Option<f64>, // Make it optional
+    pub avg_share_price: f64,
+    
+    #[serde(rename = "avg-yield")]
+    pub avg_yield: Option<f64>, 
+
+    #[serde(rename = "dividend-growth-rate")]
+    pub dividend_growth_rate: Option<f64>, 
+
+    #[serde(rename = "eps-payout-ratio")]
+    pub eps_payout_ratio: Option<f64>, 
+
+    #[serde(rename = "fcf-payout-ratio")]
+    pub fcf_payout_ratio: Option<f64>, 
+
+    #[serde(rename = "pe-ratio")]
+    pub pe_ratio: Option<f64>, 
+
+    #[serde(rename = "return-on-equity")]
+    pub return_on_equity: Option<f64>, 
+
+    #[serde(rename = "price-to-ebit")]
+    pub price_to_ebit: Option<f64>, 
+
+    #[serde(rename = "price-to-opcf")]
+    pub price_to_opcf: Option<f64>, 
+
+    #[serde(rename = "price-to-fcf")]
+    pub price_to_fcf: Option<f64>, 
+
 }
