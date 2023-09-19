@@ -38,11 +38,11 @@ async fn create_item(
         .get_or_insert(Utc::now().timestamp());
     let mut last_stock: Option<&report_model::Report> = Option::None;
 
-    println!("{:?}", stock_report);
     for stock in stock_report.data.iter_mut() {
         let in_state = &mut stock.income_statement;
         let bl_sh = &mut stock.balance_sheet;
         let cash_state = &mut stock.cash_flow_statement;
+        let ratio = &mut stock.financial_ratios;
 
         let _ = in_state
             .gross_profit
@@ -50,9 +50,10 @@ async fn create_item(
         let _ = in_state
             .gross_profit_margin
             .insert(in_state.gross_profit.unwrap() - in_state.total_cogs);
-        let _ = in_state
+        let operating_income = in_state
             .operating_income
-            .insert(in_state.gross_profit.unwrap() - in_state.operating_expense);
+            .insert(in_state.gross_profit.unwrap() - in_state.operating_expense)
+            .clone();
         let _ = in_state
             .operating_profit_margin
             .insert(in_state.operating_income.unwrap() / in_state.revenue);
@@ -63,15 +64,51 @@ async fn create_item(
         let _ = bl_sh
             .total_debt
             .insert(bl_sh.short_term_debt + bl_sh.long_term_debt);
-        let _ = bl_sh
+        let total_equity = bl_sh
             .total_equity
-            .insert(bl_sh.total_assets + bl_sh.total_liabilities);
-        let _ = bl_sh
-            .debt_to_capital
-            .insert(bl_sh.total_debt.unwrap() / (bl_sh.total_debt.unwrap() + bl_sh.total_equity.unwrap()));
+            .insert(bl_sh.total_assets + bl_sh.total_liabilities)
+            .clone();
+        let _ = bl_sh.debt_to_capital.insert(
+            bl_sh.total_debt.unwrap() / (bl_sh.total_debt.unwrap() + bl_sh.total_equity.unwrap()),
+        );
 
-        let fcf: f64 = cash_state.free_cash_flow.insert(cash_state.operating_cash_flow-cash_state.capital_expenditure).clone();
-        let _ = cash_state.fcf_per_share.insert(fcf-in_state.shares_outstanding_basic);
+        let fcf: f64 = cash_state
+            .free_cash_flow
+            .insert(cash_state.operating_cash_flow - cash_state.capital_expenditure)
+            .clone();
+        let _ = cash_state
+            .fcf_per_share
+            .insert(fcf - in_state.shares_outstanding_basic);
+
+        let _ = ratio
+            .avg_yield
+            .insert(cash_state.dividends_per_share / ratio.avg_share_price);
+
+        if let Some(lst_stock) = last_stock {
+            let _ = ratio.dividend_growth_rate.insert(
+                cash_state.dividends_per_share / lst_stock.cash_flow_statement.dividends_per_share,
+            );
+        }
+
+        let _ = ratio
+            .eps_payout_ratio
+            .insert(cash_state.dividends_per_share / in_state.eps_basic);
+        let _ = ratio
+            .fcf_payout_ratio
+            .insert(cash_state.dividends_per_share / fcf);
+        let _ = ratio
+            .pe_ratio
+            .insert(ratio.avg_share_price / in_state.eps_basic);
+        let _ = ratio
+            .return_on_equity
+            .insert(in_state.net_income / total_equity);
+        let _ = ratio
+            .price_to_ebit
+            .insert(ratio.avg_share_price / operating_income);
+        let _ = ratio
+            .price_to_opcf
+            .insert(ratio.avg_share_price / cash_state.operating_cash_flow);
+        let _ = ratio.price_to_fcf.insert(ratio.avg_share_price / fcf);
 
         if let Some(lst_stock) = last_stock {
             let in_state_l = &lst_stock.income_statement;
@@ -110,27 +147,40 @@ async fn create_item(
             });
 
             let _ = stock.balance_sheet_yoy.insert(BalanceSheet {
-                cash_and_equivalents: bl_sh.cash_and_equivalents / bl_sh_l.cash_and_equivalents - 1.0,
+                cash_and_equivalents: (bl_sh.cash_and_equivalents / bl_sh_l.cash_and_equivalents
+                    - 1.0),
                 total_assets: bl_sh.total_assets / bl_sh_l.total_assets - 1.0,
                 short_term_debt: bl_sh.short_term_debt / bl_sh_l.short_term_debt - 1.0,
                 long_term_debt: bl_sh.long_term_debt / bl_sh_l.long_term_debt - 1.0,
                 total_liabilities: bl_sh.total_liabilities / bl_sh_l.total_liabilities - 1.0,
                 total_debt: Some(bl_sh.total_debt.unwrap() / bl_sh_l.total_debt.unwrap() - 1.0),
-                total_equity: Some(bl_sh.total_equity.unwrap() / bl_sh_l.total_equity.unwrap() - 1.0),
-                debt_to_capital: Some(bl_sh.debt_to_capital.unwrap() / bl_sh_l.debt_to_capital.unwrap() - 1.0),
+                total_equity: Some(
+                    bl_sh.total_equity.unwrap() / bl_sh_l.total_equity.unwrap() - 1.0,
+                ),
+                debt_to_capital: Some(
+                    bl_sh.debt_to_capital.unwrap() / bl_sh_l.debt_to_capital.unwrap() - 1.0,
+                ),
             });
 
-            let _ = stock.cash_flow_statement_yoy.insert(CashFlowStatement { 
-                operating_cash_flow: (cash_state.operating_cash_flow / cash_state_l.operating_cash_flow), 
-                investing_cash_flow: (cash_state.investing_cash_flow / cash_state_l.investing_cash_flow), 
-                capital_expenditure: (cash_state.capital_expenditure / cash_state_l.capital_expenditure), 
-                financing_cash_flow: (cash_state.financing_cash_flow / cash_state_l.financing_cash_flow), 
-                dividends_paid: (cash_state.dividends_paid / cash_state_l.dividends_paid), 
-                dividends_per_share: (cash_state.dividends_per_share / cash_state_l.dividends_per_share), 
-                free_cash_flow: (cash_state.free_cash_flow.unwrap() / cash_state_l.free_cash_flow.unwrap()).into(), 
-                fcf_per_share: (cash_state.fcf_per_share.unwrap() / cash_state_l.fcf_per_share.unwrap()).into() 
+            let _ = stock.cash_flow_statement_yoy.insert(CashFlowStatement {
+                operating_cash_flow: (cash_state.operating_cash_flow
+                    / cash_state_l.operating_cash_flow),
+                investing_cash_flow: (cash_state.investing_cash_flow
+                    / cash_state_l.investing_cash_flow),
+                capital_expenditure: (cash_state.capital_expenditure
+                    / cash_state_l.capital_expenditure),
+                financing_cash_flow: (cash_state.financing_cash_flow
+                    / cash_state_l.financing_cash_flow),
+                dividends_paid: (cash_state.dividends_paid / cash_state_l.dividends_paid),
+                dividends_per_share: (cash_state.dividends_per_share
+                    / cash_state_l.dividends_per_share),
+                free_cash_flow: (cash_state.free_cash_flow.unwrap()
+                    / cash_state_l.free_cash_flow.unwrap())
+                .into(),
+                fcf_per_share: (cash_state.fcf_per_share.unwrap()
+                    / cash_state_l.fcf_per_share.unwrap())
+                .into(),
             });
-            // inStateYoy.eps_basic
         }
 
         println!("{}", serde_json::to_string_pretty(&stock).unwrap());
