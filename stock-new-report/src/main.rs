@@ -25,23 +25,23 @@ async fn create_item(
     item: web::Json<StockReport>,
     db: web::Data<Arc<Database>>,
 ) -> impl actix_web::Responder {
-    println!("{:?}", item);
+    info!("{:?}", item);
 
-    let dbCollection = db
+    let db_collection = db
         .client
         .database(db.db_name.as_str())
         .collection::<StockReport>("stock_reports");
 
     let stock_report = StockReport::from(item);
 
-    let result = dbCollection.insert_one(stock_report, None).await;
+    let result = db_collection.insert_one(stock_report, None).await;
     match result {
         Ok(insert_result) => {
-            println!("Created id: {}", insert_result.inserted_id);
+            info!("Created id: {}", insert_result.inserted_id);
             actix_web::HttpResponse::Created()
         },
         Err(err) => {
-            println!("Error: {}", err);
+            error!("Error: {}", err);
             actix_web::HttpResponse::InternalServerError()
         }
     }
@@ -53,7 +53,7 @@ async fn delete_item(
     db: web::Data<Arc<Database>>
 ) -> impl actix_web::Responder 
 {
-    println!("{:?}", ticker.as_str());
+    info!("{:?}", ticker.as_str());
     let filter = doc! { "ticker": ticker.as_str() };
 
     let collection = db
@@ -63,14 +63,13 @@ async fn delete_item(
 
     match collection.find_one(filter.clone(), Option::None).await{
         Err(err) => {
-            println!("Eror whilge getting tickr: {:?} with err={:?}", ticker, err);
+            error!("Eror whilge getting tickr: {:?} with err={:?}", ticker, err);
             HttpResponse::InternalServerError().body(format!("Failed to delete the ticker for: {:?}", ticker.as_str()))
         },
         Ok(stock) => {
             if let Option::Some(report) = stock{
                 let result = collection.delete_one(filter, None).await.unwrap();
                 if result.deleted_count == 1 {
-                    print!("{:?}", report);
                     HttpResponse::Ok().body(format!("I've just deleted the following report {:?}", report))
                 } else {
                     HttpResponse::InternalServerError().body(format!("failed to delete the dicker for: {:?}", ticker.as_str()))
@@ -89,7 +88,7 @@ async fn get_item(
     db: web::Data<Arc<Database>>
 ) -> impl actix_web::Responder 
 {
-    println!("{:?}", ticker.as_str());
+    info!("{:?}", ticker.as_str());
     let filter = doc! { "ticker": ticker.as_str() };
 
     let report = db
@@ -103,8 +102,8 @@ async fn get_item(
             error!("Failed to interact with db for getting ticker {:?}", err);
             actix_web::HttpResponse::InternalServerError().body("Failed to extract all items from DB")
         },
-        Ok(optStockReport) => {
-            if let Option::Some(report) = optStockReport{
+        Ok(opt_stock_report) => {
+            if let Option::Some(report) = opt_stock_report{
                 actix_web::HttpResponse::Ok().json(report)
             }
             else{
@@ -143,19 +142,11 @@ async fn get_items(db: web::Data<Arc<Database>>) -> impl actix_web::Responder {
                 let report = cursor.deserialize_current();
                 match report {
                     Ok(report) => reports.push(report),
-                    Err(_) => print!("Nothing temporary"),
+                    Err(_) => error!("Nothing temporary"),
                 }
             }
 
-            return actix_web::HttpResponse::Ok().json(reports);
-
-            // if let Ok(serialised) = serde_json::to_string(&reports) {
-            //     println!("{:?}", serialised);
-            //     return actix_web::HttpResponse::Ok().body(serialised);
-            // } else {
-            //     return actix_web::HttpResponse::InternalServerError()
-            //         .body("Failed to serialize all items from DB");
-            // }
+            actix_web::HttpResponse::Ok().json(reports)
         }
         Err(_) => {
             return actix_web::HttpResponse::InternalServerError()

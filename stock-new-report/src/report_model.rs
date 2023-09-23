@@ -182,7 +182,7 @@ impl IncomeStatement {
         let _ = self
             .gross_profit_margin
             .get_or_insert(self.gross_profit.unwrap() - self.total_cogs);
-        let operating_income = self
+        let _ = self
             .operating_income
             .get_or_insert(self.gross_profit.unwrap() - self.operating_expense)
             .clone();
@@ -218,7 +218,7 @@ impl BalanceSheet {
             .total_debt
             .insert(self.short_term_debt + self.long_term_debt);
 
-        let total_equity = self
+        let _ = self
             .total_equity
             .insert(self.total_assets + self.total_liabilities)
             .clone();
