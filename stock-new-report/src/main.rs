@@ -1,4 +1,4 @@
-use actix_web::{middleware::Logger, get, post, delete, web, App, HttpServer, Result, HttpResponse};
+use actix_web::{middleware::Logger, get, post, delete, web, App, HttpServer, Result, HttpResponse, error::InternalError};
 use bson::doc;
 use chrono;
 use chrono::Utc;
@@ -7,6 +7,7 @@ use serde::Serialize;
 use serde_json;
 use serde_json::json;
 use std::sync::Arc;
+use log::{info, warn, error};
 
 mod report_model;
 use report_model::{
@@ -26,36 +27,31 @@ async fn create_item(
 ) -> impl actix_web::Responder {
     println!("{:?}", item);
 
-    let collection = db
+    let dbCollection = db
         .client
         .database(db.db_name.as_str())
         .collection::<StockReport>("stock_reports");
 
-    // Insert the received JSON data into the MongoDB collection
     let stock_report = StockReport::from(item);
-    
-    return web::Json(stock_report);
 
-    // actix_web::HttpResponse::Created() // temporary while computing all ratios from reports
-
-    // let result = collection.insert_one(stock_report, None).await;
-    // match result {
-    //     Ok(insert_result) => {
-    //         println!("Created id: {}", insert_result.inserted_id);
-    //         actix_web::HttpResponse::Created()
-    //     },
-    //     Err(err) => {
-    //         println!("Error: {}", err);
-    //         actix_web::HttpResponse::InternalServerError()
-    //     }
-    // }
+    let result = dbCollection.insert_one(stock_report, None).await;
+    match result {
+        Ok(insert_result) => {
+            println!("Created id: {}", insert_result.inserted_id);
+            actix_web::HttpResponse::Created()
+        },
+        Err(err) => {
+            println!("Error: {}", err);
+            actix_web::HttpResponse::InternalServerError()
+        }
+    }
 }
 
 #[delete("/item/{ticker}")]
 async fn delete_item(
     ticker: web::Path<String>,
     db: web::Data<Arc<Database>>
-) -> Result<HttpResponse>
+) -> impl actix_web::Responder 
 {
     println!("{:?}", ticker.as_str());
     let filter = doc! { "ticker": ticker.as_str() };
@@ -68,27 +64,54 @@ async fn delete_item(
     match collection.find_one(filter.clone(), Option::None).await{
         Err(err) => {
             println!("Eror whilge getting tickr: {:?} with err={:?}", ticker, err);
-            Ok(HttpResponse::InternalServerError().body(format!("Failed to delete the ticker for: {:?}", ticker.as_str())))
+            HttpResponse::InternalServerError().body(format!("Failed to delete the ticker for: {:?}", ticker.as_str()))
         },
         Ok(stock) => {
             if let Option::Some(report) = stock{
                 let result = collection.delete_one(filter, None).await.unwrap();
                 if result.deleted_count == 1 {
                     print!("{:?}", report);
-                    return Ok(HttpResponse::Ok().body(format!("I've just deleted the following report {:?}", report)));
+                    HttpResponse::Ok().body(format!("I've just deleted the following report {:?}", report))
                 } else {
-                    return Ok(HttpResponse::InternalServerError().body(format!("failed to delete the dicker for: {:?}", ticker.as_str())));
+                    HttpResponse::InternalServerError().body(format!("failed to delete the dicker for: {:?}", ticker.as_str()))
                 }
             }
             else{
-                return Ok(HttpResponse::Ok().body(format!("Ticker {} does not exists in db", ticker)));
+                HttpResponse::Ok().body(format!("Ticker {} does not exists in db", ticker))
             }
         }
     }
-        
-    
-    
-  
+}
+
+#[get("/item/{ticker}")]
+async fn get_item(
+    ticker: web::Path<String>,
+    db: web::Data<Arc<Database>>
+) -> impl actix_web::Responder 
+{
+    println!("{:?}", ticker.as_str());
+    let filter = doc! { "ticker": ticker.as_str() };
+
+    let report = db
+        .client
+        .database(db.db_name.as_str())
+        .collection::<StockReport>("stock_reports")
+        .find_one(filter, Option::None).await;
+
+    match report {
+        Err(err) => {
+            error!("Failed to interact with db for getting ticker {:?}", err);
+            actix_web::HttpResponse::InternalServerError().body("Failed to extract all items from DB")
+        },
+        Ok(optStockReport) => {
+            if let Option::Some(report) = optStockReport{
+                actix_web::HttpResponse::Ok().json(report)
+            }
+            else{
+                actix_web::HttpResponse::NotFound().body("")
+            }
+        },
+    }
 
 }
 
@@ -124,13 +147,15 @@ async fn get_items(db: web::Data<Arc<Database>>) -> impl actix_web::Responder {
                 }
             }
 
-            if let Ok(serialised) = serde_json::to_string(&reports) {
-                println!("{:?}", serialised);
-                return actix_web::HttpResponse::NotFound().body(serialised);
-            } else {
-                return actix_web::HttpResponse::InternalServerError()
-                    .body("Failed to serialize all items from DB");
-            }
+            return actix_web::HttpResponse::Ok().json(reports);
+
+            // if let Ok(serialised) = serde_json::to_string(&reports) {
+            //     println!("{:?}", serialised);
+            //     return actix_web::HttpResponse::Ok().body(serialised);
+            // } else {
+            //     return actix_web::HttpResponse::InternalServerError()
+            //         .body("Failed to serialize all items from DB");
+            // }
         }
         Err(_) => {
             return actix_web::HttpResponse::InternalServerError()
@@ -170,6 +195,7 @@ async fn main() -> std::io::Result<()> {
             .data(Arc::new(database.clone()))
             .service(create_item)
             .service(get_items)
+            .service(get_item)
             .service(delete_item)
     })
     .bind("127.0.0.1:8080")?
