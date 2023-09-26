@@ -11,7 +11,7 @@ use log::{info, warn, error};
 
 mod report_model;
 use report_model::{
-    BalanceSheet, CashFlowStatement, FinancialRatios, IncomeStatement, AnnualStockReport,
+    BalanceSheet, CashFlowStatement, FinancialRatios, IncomeStatement, AnnualStockReport, Report
 };
 
 #[derive(Clone)]
@@ -20,8 +20,65 @@ struct Database {
     db_name: String,
 }
 
-#[post("/push_initial_report")]
-async fn create_item(
+#[post("/add_report/{ticker}")]
+async fn srv_add_report(
+    ticker: web::Path<String>,
+    report: web::Json<Report>,
+    db: web::Data<Arc<Database>>
+) -> impl actix_web::Responder {
+
+    info!("/add_report/{}", ticker.as_str());
+
+    let filter = doc! { "ticker": ticker.as_str() };
+
+    let collection = db
+        .client
+        .database(db.db_name.as_str())
+        .collection::<AnnualStockReport>("stock_reports");
+
+    match collection.find_one(filter.clone(), Option::None).await {
+        Err(err) => {
+            error!("Eror whilge getting tickr: {:?} with err={:?}", ticker, err);
+            HttpResponse::InternalServerError().body(format!("Failed to delete the ticker for: {:?}", ticker.as_str()))
+        },
+        Ok(stock) => {
+            if let Option::Some(mut complete_report) = stock{
+                complete_report.add_new_report(report.into_inner());
+
+                // delete the old one
+                let result = collection.delete_one(filter, None).await.unwrap();
+                if result.deleted_count != 1 {
+                    return HttpResponse::InternalServerError().body(format!("failed to update the report for: {:?}", ticker.as_str()));
+                }
+
+                // insert the new one
+                insert_complete_report(&collection, complete_report).await
+
+                // TODO: handle the case when delete is with sucess but insert failes by inverting the 2 one or by doing it by transaction
+            }
+            else{
+                HttpResponse::Ok().body(format!("Ticker {} does not exists in db", ticker))
+            }
+        }
+    }
+}
+
+async fn insert_complete_report(mut db_collection: &mongodb::Collection<AnnualStockReport>, complete_report: AnnualStockReport) -> actix_web::HttpResponse {
+    let result = db_collection.insert_one(&complete_report, None).await;
+    match result {
+        Ok(insert_result) => {
+            info!("Created id: {}", insert_result.inserted_id);
+            actix_web::HttpResponse::Created().json(complete_report)
+        },
+        Err(err) => {
+            error!("Error: {}", err);
+            actix_web::HttpResponse::InternalServerError().body("")
+        }
+    }
+}
+
+#[post("/create_initial_report")]
+async fn srv_create_initial_report(
     item: web::Json<AnnualStockReport>,
     db: web::Data<Arc<Database>>,
 ) -> impl actix_web::Responder {
@@ -32,23 +89,11 @@ async fn create_item(
         .database(db.db_name.as_str())
         .collection::<AnnualStockReport>("stock_reports");
 
-    let stock_report = AnnualStockReport::from(item);
-
-    let result = db_collection.insert_one(stock_report, None).await;
-    match result {
-        Ok(insert_result) => {
-            info!("Created id: {}", insert_result.inserted_id);
-            actix_web::HttpResponse::Created()
-        },
-        Err(err) => {
-            error!("Error: {}", err);
-            actix_web::HttpResponse::InternalServerError()
-        }
-    }
+    insert_complete_report(&db_collection, AnnualStockReport::from(item)).await
 }
 
 #[delete("/item/{ticker}")]
-async fn delete_item(
+async fn srv_delete_item(
     ticker: web::Path<String>,
     db: web::Data<Arc<Database>>
 ) -> impl actix_web::Responder 
@@ -83,7 +128,7 @@ async fn delete_item(
 }
 
 #[get("/item/{ticker}")]
-async fn get_item(
+async fn srv_get_item(
     ticker: web::Path<String>,
     db: web::Data<Arc<Database>>
 ) -> impl actix_web::Responder 
@@ -115,7 +160,7 @@ async fn get_item(
 }
 
 #[get("/items")]
-async fn get_items(db: web::Data<Arc<Database>>) -> impl actix_web::Responder {
+async fn srv_get_items(db: web::Data<Arc<Database>>) -> impl actix_web::Responder {
     let collection = db
         .client
         .database(&db.db_name)
@@ -184,10 +229,11 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(Logger::default()) // Use the Logger middleware to log requests
             .data(Arc::new(database.clone()))
-            .service(create_item)
-            .service(get_items)
-            .service(get_item)
-            .service(delete_item)
+            .service(srv_create_initial_report)
+            .service(srv_get_items)
+            .service(srv_get_item)
+            .service(srv_delete_item)
+            .service(srv_add_report)
     })
     .bind("127.0.0.1:8080")?
     .run()

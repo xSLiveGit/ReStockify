@@ -1,0 +1,30 @@
+{
+  "income-statement": {
+      "revenue": 66415.0,
+      "total-cogs": 31243.0,
+      "operating-expense": 25467.0,
+      "interest-expense": -814.0,
+      "net-income": 6740.0,
+      "eps-basic": 4.37,
+      "shares-outstanding-basic": 1541.0
+  },
+  "balance-sheet": {
+      "cash-and-equivalents": 9678.0,
+      "total-assets": 77478.0,
+      "short-term-debt": 5306.0,
+      "long-term-debt": 24333.0,
+      "total-liabilities": 53089.0
+  },
+  "cash-flow-statement": {
+      "operating-cash-flow": 9688.0,
+      "investing-cash-flow": -2625.0,
+      "capital-expenditure": 2795.0,
+      "financing-cash-flow": -3789.0,
+      "dividends-paid": 3434.0,
+      "dividends-per-share": 2.24
+  },
+  "financial-ratios": {
+      "avg-share-price": 80.33
+  },
+  "year": 2013
+}

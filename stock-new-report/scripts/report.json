@@ -61,6 +61,36 @@
                 "avg-share-price": 65.21
             },
             "year": 2011
+        },
+        {
+            "income-statement": {
+                "revenue": 65492.0,
+                "total-cogs": 31291.0,
+                "operating-expense": 25089.0,
+                "interest-expense": -808.0,
+                "net-income": 6178.0,
+                "eps-basic": 3.96,
+                "shares-outstanding-basic": 1557.0
+            },
+            "balance-sheet": {
+                "cash-and-equivalents": 6619.0,
+                "total-assets": 74638.0,
+                "short-term-debt": 4815.0,
+                "long-term-debt": 23544.0,
+                "total-liabilities": 52239.0
+            },
+            "cash-flow-statement": {
+                "operating-cash-flow": 8479.0,
+                "investing-cash-flow": -3005.0,
+                "capital-expenditure": 2714.0,
+                "financing-cash-flow": -3306.0,
+                "dividends-paid": 3305.0,
+                "dividends-per-share": 2.13
+            },
+            "financial-ratios": {
+                "avg-share-price": 68.34
+            },
+            "year": 2012
         }
     ]
 }

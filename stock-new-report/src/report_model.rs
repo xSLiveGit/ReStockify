@@ -372,12 +372,20 @@ impl AnnualStockReport {
     } 
 
     pub fn compute_optional_if_required(&mut self) {
-        let mut prev_stocks: Vec<&Report> = Vec::new(); 
-
-        for stock in self.data.iter_mut() {
-            stock.compute_optional_if_required(&prev_stocks);
-            prev_stocks.push(stock);
-            // println!("{}", serde_json::to_string_pretty(&stock).unwrap());
+        let mut prev_reports: Vec<&Report> = Vec::new();
+        for report in self.data.iter_mut() {
+            report.compute_optional_if_required(&prev_reports);
+            prev_reports.push(report);
         }
+    }
+
+    pub fn add_new_report(&mut self, mut report: Report) {
+        let mut prev_reports: Vec<&Report> = Vec::new();
+        for report in self.data.iter() {
+            prev_reports.push(report);
+        }
+
+        report.compute_optional_if_required(&prev_reports);
+        self.data.push(report);
     }
 }
