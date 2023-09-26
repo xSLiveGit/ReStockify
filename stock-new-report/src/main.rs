@@ -1,17 +1,14 @@
-use actix_web::{middleware::Logger, get, post, delete, web, App, HttpServer, Result, HttpResponse, error::InternalError};
+use actix_web::{middleware::Logger, get, post, delete, web, App, HttpServer, HttpResponse};
 use bson::doc;
-use chrono;
-use chrono::Utc;
-use mongodb::{options::{ClientOptions, FindOptions}, Client};
-use serde::Serialize;
-use serde_json;
-use serde_json::json;
+
+use mongodb::{options::{ClientOptions}, Client};
+
 use std::sync::Arc;
-use log::{info, warn, error};
+use log::{info, error};
 
 mod report_model;
 use report_model::{
-    BalanceSheet, CashFlowStatement, FinancialRatios, IncomeStatement, AnnualStockReport, Report
+    AnnualStockReport, Report
 };
 
 #[derive(Clone)]
@@ -46,9 +43,15 @@ async fn srv_add_report(
                 complete_report.add_new_report(report.into_inner());
 
                 // delete the old one
-                let result = collection.delete_one(filter, None).await.unwrap();
-                if result.deleted_count != 1 {
-                    return HttpResponse::InternalServerError().body(format!("failed to update the report for: {:?}", ticker.as_str()));
+                match collection.delete_one(filter, None).await {
+                    Ok(result) => {
+                        if result.deleted_count != 1 {
+                            return HttpResponse::InternalServerError().body(format!("failed to update the report for: {:?}", ticker.as_str()));
+                        }
+                    },
+                    Err(err) => {
+                        return HttpResponse::InternalServerError().body(format!("Internal error: {:?}", err));
+                    }
                 }
 
                 // insert the new one
@@ -63,7 +66,7 @@ async fn srv_add_report(
     }
 }
 
-async fn insert_complete_report(mut db_collection: &mongodb::Collection<AnnualStockReport>, complete_report: AnnualStockReport) -> actix_web::HttpResponse {
+async fn insert_complete_report(db_collection: &mongodb::Collection<AnnualStockReport>, complete_report: AnnualStockReport) -> actix_web::HttpResponse {
     let result = db_collection.insert_one(&complete_report, None).await;
     match result {
         Ok(insert_result) => {
