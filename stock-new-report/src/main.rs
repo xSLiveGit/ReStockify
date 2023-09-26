@@ -11,7 +11,7 @@ use log::{info, warn, error};
 
 mod report_model;
 use report_model::{
-    BalanceSheet, CashFlowStatement, FinancialRatios, IncomeStatement, StockReport,
+    BalanceSheet, CashFlowStatement, FinancialRatios, IncomeStatement, AnnualStockReport,
 };
 
 #[derive(Clone)]
@@ -22,7 +22,7 @@ struct Database {
 
 #[post("/push_initial_report")]
 async fn create_item(
-    item: web::Json<StockReport>,
+    item: web::Json<AnnualStockReport>,
     db: web::Data<Arc<Database>>,
 ) -> impl actix_web::Responder {
     info!("{:?}", item);
@@ -30,9 +30,9 @@ async fn create_item(
     let db_collection = db
         .client
         .database(db.db_name.as_str())
-        .collection::<StockReport>("stock_reports");
+        .collection::<AnnualStockReport>("stock_reports");
 
-    let stock_report = StockReport::from(item);
+    let stock_report = AnnualStockReport::from(item);
 
     let result = db_collection.insert_one(stock_report, None).await;
     match result {
@@ -59,7 +59,7 @@ async fn delete_item(
     let collection = db
         .client
         .database(db.db_name.as_str())
-        .collection::<StockReport>("stock_reports");
+        .collection::<AnnualStockReport>("stock_reports");
 
     match collection.find_one(filter.clone(), Option::None).await{
         Err(err) => {
@@ -94,7 +94,7 @@ async fn get_item(
     let report = db
         .client
         .database(db.db_name.as_str())
-        .collection::<StockReport>("stock_reports")
+        .collection::<AnnualStockReport>("stock_reports")
         .find_one(filter, Option::None).await;
 
     match report {
@@ -119,7 +119,7 @@ async fn get_items(db: web::Data<Arc<Database>>) -> impl actix_web::Responder {
     let collection = db
         .client
         .database(&db.db_name)
-        .collection::<StockReport>("stock_reports");
+        .collection::<AnnualStockReport>("stock_reports");
 
     // Retrieve all stock reports from the collection
     let cursor = collection.find(doc! {}, None).await;

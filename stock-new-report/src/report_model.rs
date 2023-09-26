@@ -1,13 +1,14 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
+use std::collections::HashMap;
 use actix_web::{web};
 use bson::doc;
 use chrono;
 use serde_json;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct StockReport {
+pub struct AnnualStockReport {
     #[serde(rename = "latest-update")]
     pub latest_update: Option<i64>,
     pub ticker: String,
@@ -43,7 +44,6 @@ pub struct Report {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct IncomeStatement {
-    #[serde(rename = "revenue")]
     pub revenue: f64,
 
     #[serde(rename = "total-cogs")]
@@ -153,10 +153,17 @@ pub struct FinancialRatios {
 
     #[serde(rename = "price-to-fcf")]
     pub price_to_fcf: Option<f64>,
+
+    pub dgr1: Option<f64>,
+    pub dgr3: Option<f64>,
+    pub dgr5: Option<f64>,
+    pub dgr10: Option<f64>,
+    pub dgr15: Option<f64>,
+    pub dgr20: Option<f64>,
 }
 
 impl Report {
-    fn compute_optional_if_required(&mut self, last_stock: &Option<&Report>){
+    fn compute_optional_if_required(&mut self, prev_reports: &[&Report]){
         self.income_statement.compute_optional_if_required();
         self.balance_sheet.compute_optional_if_required();
         self.cash_flow_statement.compute_optional_if_required(&self.income_statement);
@@ -164,10 +171,11 @@ impl Report {
             &self.cash_flow_statement,
             &self.income_statement,
             &self.balance_sheet,
-            &last_stock,
+            &prev_reports,
+            self.year
         );
 
-        if let Some(last) = last_stock {
+        if let Some(last) = prev_reports.last() {
             let _ = self.income_statement_yoy.insert(IncomeStatement::from_as_yoy(&self.income_statement, &last.income_statement));
             let _ = self.balance_sheet_yoy.insert(BalanceSheet::from_as_yoy(&self.balance_sheet, &last.balance_sheet));
             let _ = self.cash_flow_statement_yoy.insert(CashFlowStatement::from_as_yoy(&self.cash_flow_statement, &last.cash_flow_statement));
@@ -289,15 +297,16 @@ impl FinancialRatios {
         current_cfs: &CashFlowStatement,
         in_state: &IncomeStatement,
         bl_sheet: &BalanceSheet,
-        last_result: &Option<&Report>,
+        prev_reports: &[&Report],
+        current_report_year: i32
     ) {
         let _ = self
             .avg_yield
             .insert(current_cfs.dividends_per_share / self.avg_share_price);
 
-        if let Some(lst_stock) = last_result {
+        if let Some(last) = prev_reports.last() {
             let _ = self.dividend_growth_rate.insert(
-                current_cfs.dividends_per_share / lst_stock.cash_flow_statement.dividends_per_share,
+                current_cfs.dividends_per_share / last.cash_flow_statement.dividends_per_share,
             );
         }
 
@@ -323,12 +332,39 @@ impl FinancialRatios {
         let _ = self
             .price_to_fcf
             .insert(self.avg_share_price / current_cfs.free_cash_flow.unwrap());
+
+        // Compute dgrs
+        let mut map: HashMap<usize, &mut Option<f64>> = HashMap::new();
+        map.insert(1, &mut self.dgr1);
+        map.insert(3, &mut self.dgr3);
+        map.insert(5, &mut self.dgr5);
+        map.insert(10, &mut self.dgr10);
+        map.insert(15, &mut self.dgr15);
+        map.insert(20, &mut self.dgr20);
+
+        for (key, dgr) in map.iter_mut(){
+            let years: usize = key.clone();
+            if prev_reports.len() >= years {
+                let idx = prev_reports.len() - years;
+                let old_report: &Report = prev_reports.get(idx).unwrap();
+
+                let old_dividend = old_report.cash_flow_statement.dividends_per_share;
+                let dgr_val = (current_cfs.dividends_per_share / old_dividend).powf(1.0 / (years as f64)) - 1.0; 
+                
+                println!("{}/{} {}/{} dgr{}={}", 
+                    current_report_year, old_report.year, 
+                    current_cfs.dividends_per_share, old_report.cash_flow_statement.dividends_per_share,
+                    years, dgr_val);
+
+                let _ = dgr.insert(dgr_val);
+            } 
+        }
     }
 }
 
 
-impl StockReport {
-    pub fn from(json: web::Json<StockReport>) -> StockReport {
+impl AnnualStockReport {
+    pub fn from(json: web::Json<AnnualStockReport>) -> AnnualStockReport {
         let mut report = json.into_inner();
         let _ = report.latest_update.get_or_insert(Utc::now().timestamp());
         report.compute_optional_if_required();
@@ -336,18 +372,12 @@ impl StockReport {
     } 
 
     pub fn compute_optional_if_required(&mut self) {
-        let mut last_stock: Option<&Report> = Option::None;
+        let mut prev_stocks: Vec<&Report> = Vec::new(); 
 
         for stock in self.data.iter_mut() {
-            // let in_state = &mut stock.income_statement;
-            // let bl_sh = &mut stock.balance_sheet;
-            // let cash_state = &mut stock.cash_flow_statement;
-            // let ratio = &mut stock.financial_ratios;
-            stock.compute_optional_if_required(&last_stock);
-
-           
-            println!("{}", serde_json::to_string_pretty(&stock).unwrap());
-            let _ = last_stock.insert(stock);
+            stock.compute_optional_if_required(&prev_stocks);
+            prev_stocks.push(stock);
+            // println!("{}", serde_json::to_string_pretty(&stock).unwrap());
         }
     }
 }
