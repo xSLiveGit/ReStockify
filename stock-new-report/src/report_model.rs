@@ -1,11 +1,10 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use std::collections::HashMap;
-use actix_web::{web};
+use actix_web::web;
 use bson::doc;
 use chrono;
-
+use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AnnualStockReport {
@@ -115,7 +114,6 @@ pub struct CashFlowStatement {
     pub dividends_paid: f64,
     #[serde(rename = "dividends-per-share")]
     pub dividends_per_share: f64,
-
     #[serde(rename = "free-cash-flow")]
     pub free_cash_flow: Option<f64>,
     #[serde(rename = "fcf-per-share")]
@@ -154,6 +152,9 @@ pub struct FinancialRatios {
     #[serde(rename = "price-to-fcf")]
     pub price_to_fcf: Option<f64>,
 
+    #[serde(rename = "fcf-yield")]
+    pub fcf_yield: Option<f64>,
+
     pub dgr1: Option<f64>,
     pub dgr3: Option<f64>,
     pub dgr5: Option<f64>,
@@ -163,22 +164,36 @@ pub struct FinancialRatios {
 }
 
 impl Report {
-    fn compute_optional_if_required(&mut self, prev_reports: &[&Report]){
+    fn compute_optional_if_required(&mut self, prev_reports: &[&Report]) {
         self.income_statement.compute_optional_if_required();
         self.balance_sheet.compute_optional_if_required();
-        self.cash_flow_statement.compute_optional_if_required(&self.income_statement);
+        self.cash_flow_statement
+            .compute_optional_if_required(&self.income_statement);
         self.financial_ratios.compute_optional_if_required(
             &self.cash_flow_statement,
             &self.income_statement,
             &self.balance_sheet,
             &prev_reports,
-            self.year
+            self.year,
         );
 
         if let Some(last) = prev_reports.last() {
-            let _ = self.income_statement_yoy.insert(IncomeStatement::from_as_yoy(&self.income_statement, &last.income_statement));
-            let _ = self.balance_sheet_yoy.insert(BalanceSheet::from_as_yoy(&self.balance_sheet, &last.balance_sheet));
-            let _ = self.cash_flow_statement_yoy.insert(CashFlowStatement::from_as_yoy(&self.cash_flow_statement, &last.cash_flow_statement));
+            let _ = self
+                .income_statement_yoy
+                .insert(IncomeStatement::from_as_yoy(
+                    &self.income_statement,
+                    &last.income_statement,
+                ));
+            let _ = self.balance_sheet_yoy.insert(BalanceSheet::from_as_yoy(
+                &self.balance_sheet,
+                &last.balance_sheet,
+            ));
+            let _ = self
+                .cash_flow_statement_yoy
+                .insert(CashFlowStatement::from_as_yoy(
+                    &self.cash_flow_statement,
+                    &last.cash_flow_statement,
+                ));
         }
     }
 }
@@ -207,15 +222,26 @@ impl IncomeStatement {
             revenue: current.revenue / last.revenue - 1.0,
             total_cogs: current.total_cogs / last.total_cogs - 1.0,
             gross_profit: Some(current.gross_profit.unwrap() / last.gross_profit.unwrap() - 1.0),
-            gross_profit_margin: Some(current.gross_profit_margin.unwrap() / last.gross_profit_margin.unwrap() - 1.0),
+            gross_profit_margin: Some(
+                current.gross_profit_margin.unwrap() / last.gross_profit_margin.unwrap() - 1.0,
+            ),
             operating_expense: current.operating_expense / last.operating_expense - 1.0,
-            operating_income: Some(current.operating_income.unwrap() / last.operating_income.unwrap() - 1.0),
-            operating_profit_margin: Some(current.operating_profit_margin.unwrap() / last.operating_profit_margin.unwrap() - 1.0),
+            operating_income: Some(
+                current.operating_income.unwrap() / last.operating_income.unwrap() - 1.0,
+            ),
+            operating_profit_margin: Some(
+                current.operating_profit_margin.unwrap() / last.operating_profit_margin.unwrap()
+                    - 1.0,
+            ),
             interest_expense: current.interest_expense / last.interest_expense - 1.0,
             net_income: current.net_income / last.net_income - 1.0,
-            net_profit_margin: Some(current.net_profit_margin.unwrap() / last.net_profit_margin.unwrap() - 1.),
+            net_profit_margin: Some(
+                current.net_profit_margin.unwrap() / last.net_profit_margin.unwrap() - 1.,
+            ),
             eps_basic: current.eps_basic / last.eps_basic - 1.0,
-            shares_outstanding_basic: current.shares_outstanding_basic / last.shares_outstanding_basic - 1.0,
+            shares_outstanding_basic: current.shares_outstanding_basic
+                / last.shares_outstanding_basic
+                - 1.0,
         }
     }
 }
@@ -236,19 +262,15 @@ impl BalanceSheet {
         );
     }
 
-    fn from_as_yoy(current: &BalanceSheet, last: &BalanceSheet) -> BalanceSheet{
+    fn from_as_yoy(current: &BalanceSheet, last: &BalanceSheet) -> BalanceSheet {
         BalanceSheet {
-            cash_and_equivalents: (current.cash_and_equivalents
-                / last.cash_and_equivalents
-                - 1.0),
+            cash_and_equivalents: (current.cash_and_equivalents / last.cash_and_equivalents - 1.0),
             total_assets: current.total_assets / last.total_assets - 1.0,
             short_term_debt: current.short_term_debt / last.short_term_debt - 1.0,
             long_term_debt: current.long_term_debt / last.long_term_debt - 1.0,
             total_liabilities: current.total_liabilities / last.total_liabilities - 1.0,
             total_debt: Some(current.total_debt.unwrap() / last.total_debt.unwrap() - 1.0),
-            total_equity: Some(
-                current.total_equity.unwrap() / last.total_equity.unwrap() - 1.0,
-            ),
+            total_equity: Some(current.total_equity.unwrap() / last.total_equity.unwrap() - 1.0),
             debt_to_capital: Some(
                 current.debt_to_capital.unwrap() / last.debt_to_capital.unwrap() - 1.0,
             ),
@@ -265,28 +287,19 @@ impl CashFlowStatement {
 
         let _ = self
             .fcf_per_share
-            .insert(fcf - in_state.shares_outstanding_basic);
+            .insert(fcf / in_state.shares_outstanding_basic);
     }
 
     fn from_as_yoy(current: &CashFlowStatement, last: &CashFlowStatement) -> CashFlowStatement {
         CashFlowStatement {
-            operating_cash_flow: (current.operating_cash_flow
-                / last.operating_cash_flow),
-            investing_cash_flow: (current.investing_cash_flow
-                / last.investing_cash_flow),
-            capital_expenditure: (current.capital_expenditure
-                / last.capital_expenditure),
-            financing_cash_flow: (current.financing_cash_flow
-                / last.financing_cash_flow),
+            operating_cash_flow: (current.operating_cash_flow / last.operating_cash_flow),
+            investing_cash_flow: (current.investing_cash_flow / last.investing_cash_flow),
+            capital_expenditure: (current.capital_expenditure / last.capital_expenditure),
+            financing_cash_flow: (current.financing_cash_flow / last.financing_cash_flow),
             dividends_paid: (current.dividends_paid / last.dividends_paid),
-            dividends_per_share: (current.dividends_per_share
-                / last.dividends_per_share),
-            free_cash_flow: (current.free_cash_flow.unwrap()
-                / last.free_cash_flow.unwrap())
-            .into(),
-            fcf_per_share: (current.fcf_per_share.unwrap()
-                / last.fcf_per_share.unwrap())
-            .into(),
+            dividends_per_share: (current.dividends_per_share / last.dividends_per_share),
+            free_cash_flow: (current.free_cash_flow.unwrap() / last.free_cash_flow.unwrap()).into(),
+            fcf_per_share: (current.fcf_per_share.unwrap() / last.fcf_per_share.unwrap()).into(),
         }
     }
 }
@@ -298,7 +311,7 @@ impl FinancialRatios {
         in_state: &IncomeStatement,
         bl_sheet: &BalanceSheet,
         prev_reports: &[&Report],
-        current_report_year: i32
+        current_report_year: i32,
     ) {
         let _ = self
             .avg_yield
@@ -332,6 +345,11 @@ impl FinancialRatios {
         let _ = self
             .price_to_fcf
             .insert(self.avg_share_price / current_cfs.free_cash_flow.unwrap());
+        let _ = self
+            .fcf_yield
+            .insert(current_cfs.fcf_per_share.unwrap() / self.avg_share_price);
+
+        println!("[{}] {}/{} {}", current_report_year, current_cfs.fcf_per_share.unwrap(), self.avg_share_price, self.fcf_yield.unwrap());
 
         // Compute dgrs
         let mut map: HashMap<usize, &mut Option<f64>> = HashMap::new();
@@ -342,26 +360,32 @@ impl FinancialRatios {
         map.insert(15, &mut self.dgr15);
         map.insert(20, &mut self.dgr20);
 
-        for (key, dgr) in map.iter_mut(){
+        for (key, dgr) in map.iter_mut() {
             let years: usize = key.clone();
             if prev_reports.len() >= years {
                 let idx = prev_reports.len() - years;
                 let old_report: &Report = prev_reports.get(idx).unwrap();
 
                 let old_dividend = old_report.cash_flow_statement.dividends_per_share;
-                let dgr_val = (current_cfs.dividends_per_share / old_dividend).powf(1.0 / (years as f64)) - 1.0; 
-                
-                println!("{}/{} {}/{} dgr{}={}", 
-                    current_report_year, old_report.year, 
-                    current_cfs.dividends_per_share, old_report.cash_flow_statement.dividends_per_share,
-                    years, dgr_val);
+                let dgr_val = (current_cfs.dividends_per_share / old_dividend)
+                    .powf(1.0 / (years as f64))
+                    - 1.0;
+
+                // println!(
+                //     "{}/{} {}/{} dgr{}={}",
+                //     current_report_year,
+                //     old_report.year,
+                //     current_cfs.dividends_per_share,
+                //     old_report.cash_flow_statement.dividends_per_share,
+                //     years,
+                //     dgr_val
+                // );
 
                 let _ = dgr.insert(dgr_val);
-            } 
+            }
         }
     }
 }
-
 
 impl AnnualStockReport {
     pub fn from(json: web::Json<AnnualStockReport>) -> AnnualStockReport {
@@ -369,7 +393,7 @@ impl AnnualStockReport {
         let _ = report.latest_update.get_or_insert(Utc::now().timestamp());
         report.compute_optional_if_required();
         return report;
-    } 
+    }
 
     pub fn compute_optional_if_required(&mut self) {
         let mut prev_reports: Vec<&Report> = Vec::new();

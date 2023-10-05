@@ -70,7 +70,7 @@ async fn insert_complete_report(db_collection: &mongodb::Collection<AnnualStockR
     let result = db_collection.insert_one(&complete_report, None).await;
     match result {
         Ok(insert_result) => {
-            info!("Created id: {}", insert_result.inserted_id);
+            // info!("Created id: {}", insert_result.inserted_id);
             actix_web::HttpResponse::Created().json(complete_report)
         },
         Err(err) => {
