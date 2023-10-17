@@ -1,3 +1,4 @@
+use actix_cors::Cors;
 use actix_web::{middleware::Logger, get, post, delete, web, App, HttpServer, HttpResponse};
 use bson::doc;
 
@@ -228,9 +229,11 @@ async fn main() -> std::io::Result<()> {
         db_name: db_name,
     };
 
+
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default()) // Use the Logger middleware to log requests
+            .wrap(Cors::permissive()) // Enable CORS with default options
             .data(Arc::new(database.clone()))
             .service(srv_create_initial_report)
             .service(srv_get_items)
